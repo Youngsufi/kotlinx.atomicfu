@@ -120,11 +120,24 @@ if (!project.ext.ideaActive) {
         def fakeCinteropCompilation = kotlin.targets["metadata"].compilations[kotlin.sourceSets.nativeInterop.name]
         def destination = fakeCinteropCompilation.compileKotlinTask.destinationDir
 
+        def tempDir = "$buildDir/tmp/unpackedInteropKlib"
+
+        task prepareCinteropKlib(type: Copy) {
+            from(files(zipTree(cinteropKlib).matching { exclude("default/targets/**")}).builtBy(cinteropTask))
+            into(tempDir)
+
+            doLast {
+                def manifest = file("$tempDir/default/manifest")
+                def lines = manifest.readLines()
+                def modifiedLines = lines.collect { line ->
+                    line.startsWith("depends=") ? "depends=stdlib org.jetbrains.kotlin.native.platform.posix" : line
+                }
+                manifest.text = modifiedLines.join("\n")
+            }
+        }
+
         task copyCinteropKlib(type: Zip) {
-            from(zipTree(cinteropKlib).matching {
-                exclude("targets/**") // with Kotlin pre-1.4
-                exclude("default/targets/**") // with Kotlin 1.4
-            })
+            from(fileTree(tempDir).builtBy(prepareCinteropKlib))
             destinationDirectory.set(destination)
             archiveFileName.set("${project.name}_${fakeCinteropCompilation.name}.klib")
             dependsOn cinteropTask
