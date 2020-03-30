@@ -67,9 +67,7 @@ publishing {
     publications.all {
         pom.withXml(configureMavenCentralMetadata)
 
-        // add empty javadocs (no need for MPP root publication which publishes only pom file)
-        if (it.name != 'kotlinMultiplatform') {
-            it.artifact(javadocJar)
-        }
+        // add empty javadocs
+        it.artifact(javadocJar)
     }
 }

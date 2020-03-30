@@ -313,10 +313,38 @@ jvmTest {
 jvmTest.dependsOn jvmTestAll
 
 afterEvaluate {
+    def jvmPomBuilder = null
+
     publishing.publications {
-        jvm.artifactId = 'atomicfu'
+        jvm {
+            pom.withXml { jvmPomBuilder = asString() }
+            artifactId = 'atomicfu-jvm'
+        }
+
         js.artifactId = 'atomicfu-js'
         metadata.artifactId = 'atomicfu-common'
-        kotlinMultiplatform.artifactId = 'atomicfu-native'
+
+        kotlinMultiplatform {
+            artifactId = 'atomicfu'
+            artifact(tasks["jvmJar"])
+            artifact(tasks["jvmSourcesJar"]) { classifier = 'sources' }
+
+            // Publish the JVM JAR and POM so that consumers who depend on this module and can't read Gradle module
+            // metadata can still get the JVM artifact and transitive dependencies:
+            pom.withXml {
+                def pomStringBuilder = asString()
+                pomStringBuilder.setLength(0)
+                // The JVM POM needs its artifact ID replaced with the artifact ID of the root module:
+                def newContent = jvmPomBuilder.toString().replace(
+                        publishing.publications.jvm.artifactId,
+                        publishing.publications.kotlinMultiplatform.artifactId
+                )
+                pomStringBuilder.append(newContent)
+            }
+        }
     }
+}
+
+tasks.matching { it.name == "generatePomFileForKotlinMultiplatformPublication"}.configureEach {
+    dependsOn(tasks["generatePomFileForJvmPublication"])
 }
