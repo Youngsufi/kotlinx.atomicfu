@@ -335,11 +335,16 @@ afterEvaluate {
                 def pomStringBuilder = asString()
                 pomStringBuilder.setLength(0)
                 // The JVM POM needs its artifact ID replaced with the artifact ID of the root module:
-                def newContent = jvmPomBuilder.toString().replace(
-                        publishing.publications.jvm.artifactId,
-                        publishing.publications.kotlinMultiplatform.artifactId
-                )
-                pomStringBuilder.append(newContent)
+                def jvmPom = jvmPomBuilder.toString()
+                jvmPom.eachLine { line ->
+                    if (!line.contains("<!--")) {
+                        pomStringBuilder.append(line.replace(
+                                publishing.publications.jvm.artifactId,
+                                publishing.publications.kotlinMultiplatform.artifactId
+                        ))
+                        pomStringBuilder.append("\n")
+                    }
+                }
             }
         }
     }
